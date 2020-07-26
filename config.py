@@ -11,4 +11,4 @@ RESP_OK = 'OK'
 # Discord config
 TOKEN = os.getenv('TOKEN')
 CHANNEL_ID = int(os.getenv('CHANNEL_ID'))
-SLEEP_TIME = 30
+SLEEP_TIME = 2 * 60
