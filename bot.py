@@ -18,6 +18,7 @@ class MyClient(discord.Client):
         log(self.user.name)
         log(self.user.id)
         log('------')
+        await self.change_presence(activity=discord.Activity(name='Kio\'s commands', type=discord.ActivityType.listening))
 
     async def check_submissions(self):
         await self.wait_until_ready()
