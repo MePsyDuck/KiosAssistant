@@ -10,7 +10,6 @@ from util import read_email, log
 class MyClient(discord.Client):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
         self.bg_task = self.loop.create_task(self.check_submissions())
 
     async def on_ready(self):
@@ -18,7 +17,8 @@ class MyClient(discord.Client):
         log(self.user.name)
         log(self.user.id)
         log('------')
-        await self.change_presence(activity=discord.Activity(name='Kio\'s commands', type=discord.ActivityType.listening))
+        await self.change_presence(
+            activity=discord.Activity(name='Kio\'s commands', type=discord.ActivityType.listening))
 
     async def check_submissions(self):
         await self.wait_until_ready()
@@ -26,16 +26,11 @@ class MyClient(discord.Client):
         while not self.is_closed():
             new_submissions = read_email()
             if new_submissions and len(new_submissions) != 0:
-                msg = 'New form submission(s) found. '
-                forms = sorted(new_submissions.items())
-                if len(forms) == 1:
-                    only_form = forms[0]
-                    msg += f'{only_form[1]} new submission{"s" if only_form[1] > 1 else ""} in {only_form[0]}.'
-                elif len(forms) > 1:
-                    for form in forms[:-1]:
-                        msg += f'{form[1]} new submission{"s" if form[1] > 1 else ""} in {form[0]}, '
-                    last_form = forms[-1]
-                    msg = msg[:-2] + f' and {last_form[1]} new submission{"s" if last_form[1] > 1 else ""} in {last_form[0]}.'
+                msg = 'New form submission(s) found.\n'
+                msg += '\n'.join([f'- '
+                                  f'{form.split(" ")[-2]}'  # Just a hack, needs to be revisited when new forms are added.
+                                  f': {submission_count}' for form, submission_count in
+                                  sorted(new_submissions.items())])
                 log(msg)
                 await channel.send(msg)
             await asyncio.sleep(SLEEP_TIME)
