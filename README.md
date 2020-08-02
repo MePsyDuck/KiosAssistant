@@ -17,7 +17,7 @@ function onFormSubmit(e) {
   // for (let key in values) 
   //   json_body[key] = values[key]
   
-    GmailApp.sendEmail('koisassistant@gmail.com', 'There is a new application for Academy Teams.', JSON.stringify(json_body));
+    GmailApp.sendEmail('email@gmail.com', 'There is a new application for Academy Teams.', JSON.stringify(json_body));
 }
 ```
 
