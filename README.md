@@ -31,4 +31,8 @@ function onFormSubmit(e) {
 
 ## Bot
 Adding the bot: 
-https://discordapp.com/oauth2/authorize?&client_id=736823106194112593&scope=bot&permissions=3072
+https://discordapp.com/oauth2/authorize?&client_id=736823106194112593&scope=bot&permissions=8
+
+## TODO
+* Use `asyncpg` instead of `psycopg2` 
+* Use custom emoji

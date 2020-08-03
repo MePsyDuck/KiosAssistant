@@ -1,6 +1,8 @@
 import email
 import imaplib
 import json
+import logging
+import sys
 from collections import Counter
 from datetime import datetime
 
@@ -9,6 +11,7 @@ import psycopg2
 from config import SMTP_SERVER, BOT_EMAIL, BOT_PWD, SMTP_PORT, RESP_OK, MAIL_LABEL, DATABASE_URL
 
 
+# noinspection PyUnresolvedReferences
 def read_email():
     try:
         mail = imaplib.IMAP4_SSL(SMTP_SERVER, SMTP_PORT)
@@ -63,10 +66,10 @@ def schedule_event(message_id, event_name, event_datetime):
     cur = conn.cursor()
 
     insert_query = 'INSERT INTO events (message_id, event_name, event_datetime) ' \
-                   'VALUES (%s, %s)'
+                   'VALUES (%s, %s, %s);'
     cur.execute(insert_query, (message_id, event_name, event_datetime,))
 
-    cur.commit()
+    conn.commit()
     cur.close()
     conn.close()
 
@@ -76,12 +79,12 @@ def get_current_events():
     cur = conn.cursor()
 
     select_query = 'SELECT message_id, event_id, event_name, event_datetime FROM events ' \
-                   'WHERE event_datetime < (%s)'
+                   'WHERE event_datetime < (%s);'
     cur.execute(select_query, (datetime.utcnow(),))
     events = [{'message_id': row[0], 'event_id': row[1], 'event_name': row[2], 'event_datetime': row[3]} for row in
               cur.fetchall()]
 
-    cur.commit()
+    conn.commit()
     cur.close()
     conn.close()
     return events
@@ -93,9 +96,22 @@ def delete_events(events):
 
     event_ids = [event['event_id'] for event in events]
     delete_query = 'DELETE FROM events ' \
-                   'WHERE event_id = ANY (%s)'
+                   'WHERE event_id = ANY (%s);'
     cur.execute(delete_query, (event_ids,))
 
-    cur.commit()
+    conn.commit()
     cur.close()
     conn.close()
+
+
+def setup_logging():
+    logger = logging.getLogger('discord')
+    logger.setLevel(logging.DEBUG)
+
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
+    logger.addHandler(handler)
+
+    handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
+    handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
+    logger.addHandler(handler)
