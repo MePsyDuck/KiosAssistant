@@ -6,7 +6,7 @@ import discord
 from discord.ext import tasks
 from discord.ext.commands import has_role, Bot, MissingRole
 
-from config import TOKEN, SLEEP_TIME, EVENTS_CHANNEL_ID, CAPTAINS_CHANNEL_ID, EVENT_REMINDER_TIMEOUT, EVENT_ROLE
+from config import TOKEN, SLEEP_TIME, EVENTS_CHANNEL_ID, CAPTAINS_CHANNEL_ID, EVENT_REMINDER_TIMEOUT
 from util import log, schedule_event, get_current_events, delete_events, read_email, get_event_emoji
 
 bot = Bot(command_prefix='!!')
@@ -70,7 +70,7 @@ async def before_check_events():
 
 
 @bot.command(name='event')
-@has_role(EVENT_ROLE)
+@has_role('Sensei')
 async def new_event(ctx, *event_info):
     """ Format : !!event <event_name> :: <datetime> """
     separator = '::'
