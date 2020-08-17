@@ -8,7 +8,8 @@ from datetime import datetime
 
 import psycopg2
 
-from config import SMTP_SERVER, BOT_EMAIL, BOT_PWD, SMTP_PORT, RESP_OK, MAIL_LABEL, DATABASE_URL
+from config import SMTP_SERVER, BOT_EMAIL, BOT_PWD, SMTP_PORT, RESP_OK, MAIL_LABEL, DATABASE_URL, EVENTS_CHANNEL_ID, \
+    EVENT_EMOJI
 
 
 # noinspection PyUnresolvedReferences
@@ -43,6 +44,13 @@ def read_email():
 
     except Exception as e:
         log(str(e))
+
+
+def get_event_emoji(bot):
+    channel = bot.get_channel(EVENTS_CHANNEL_ID)
+    for emoji in channel.guild.emojis:
+        if emoji.name == EVENT_EMOJI:
+            return emoji
 
 
 def log(msg):
