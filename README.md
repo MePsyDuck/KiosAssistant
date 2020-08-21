@@ -9,7 +9,7 @@
 ```javascript
 function onFormSubmit(e) {  
   let json_body = {
-    form_name : '[0k - 3k] Application for Kio\'s Academy Teams'
+        form_name : '[0k - 3k] Application for Kio\'s Academy Teams'
     };
     
   // Uncomment below to get all details submitted in the form
@@ -35,4 +35,15 @@ https://discordapp.com/oauth2/authorize?&client_id=736823106194112593&scope=bot&
 
 ## TODO
 * Use `asyncpg` instead of `psycopg2` 
-* Use custom emoji
+* Use discord logger
+
+## Changelog
+* First version with Google form monitoring
+* Added new command `!!new_event` to create new events.
+    * Format `!!new_event <event_name> :: <event_datetime>`
+* Added new command `!!clear_event` to clear a single event.
+    *  Format `!!clear_event <event_id>`
+* Added new command `!!clear_events` to clear all the existing events.
+    * Format `!!clear_events`
+* Added custom emoji for events
+* Add more datetime details to new events.

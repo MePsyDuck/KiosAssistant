@@ -4,11 +4,11 @@ import json
 import logging
 import sys
 from collections import Counter
-from datetime import datetime
 
-import psycopg2
+import pytz
+from dateutil.relativedelta import relativedelta
 
-from config import SMTP_SERVER, BOT_EMAIL, BOT_PWD, SMTP_PORT, RESP_OK, MAIL_LABEL, DATABASE_URL, EVENTS_CHANNEL_ID, \
+from config import SMTP_SERVER, BOT_EMAIL, BOT_PWD, SMTP_PORT, RESP_OK, MAIL_LABEL, EVENTS_CHANNEL_ID, \
     EVENT_EMOJI
 
 
@@ -57,64 +57,9 @@ def log(msg):
     print(msg)
 
 
-def get_connection():
-    return psycopg2.connect(DATABASE_URL, sslmode='require')
-
-
-def schedule_event(message_id, event_name, event_datetime):
-    """
-    CREATE TABLE events (
-    event_id SERIAL,
-    message_id BIGINT,
-    event_name VARCHAR(255),
-    event_datetime TIMESTAMP
-    );
-    """
-    conn = get_connection()
-    cur = conn.cursor()
-
-    insert_query = 'INSERT INTO events (message_id, event_name, event_datetime) ' \
-                   'VALUES (%s, %s, %s);'
-    cur.execute(insert_query, (message_id, event_name, event_datetime,))
-
-    conn.commit()
-    cur.close()
-    conn.close()
-
-
-def get_current_events():
-    conn = get_connection()
-    cur = conn.cursor()
-
-    select_query = 'SELECT message_id, event_id, event_name, event_datetime FROM events ' \
-                   'WHERE event_datetime < (%s);'
-    cur.execute(select_query, (datetime.utcnow(),))
-    events = [{'message_id': row[0], 'event_id': row[1], 'event_name': row[2], 'event_datetime': row[3]} for row in
-              cur.fetchall()]
-
-    conn.commit()
-    cur.close()
-    conn.close()
-    return events
-
-
-def delete_events(events):
-    conn = get_connection()
-    cur = conn.cursor()
-
-    event_ids = [event['event_id'] for event in events]
-    delete_query = 'DELETE FROM events ' \
-                   'WHERE event_id = ANY (%s);'
-    cur.execute(delete_query, (event_ids,))
-
-    conn.commit()
-    cur.close()
-    conn.close()
-
-
 def setup_logging():
     logger = logging.getLogger('discord')
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO)
 
     handler = logging.StreamHandler(sys.stdout)
     handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
@@ -123,3 +68,35 @@ def setup_logging():
     handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
     handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
     logger.addHandler(handler)
+
+
+# Code taken and adjusted from https://github.com/Watchful1/RemindMeBot/blob/master/src/utils.py
+def render_time(date_time, add_link=False):
+    return f'{date_time.astimezone(pytz.UTC).strftime("%Y-%m-%d %I:%M:%S %p %Z")}' + \
+           (f'(http://www.wolframalpha.com/input/?i={date_time.strftime("%Y-%m-%d %H:%M:%S %Z")} To Local Time)'.replace(
+               ' ', '%20') if add_link else ' ')
+
+
+def render_time_diff(start_date, end_date):
+    seconds = int((end_date - start_date).total_seconds())
+    if seconds > 59:
+        try:
+            adjusted_end_date = start_date + relativedelta(seconds=int(min(seconds * 1.02, seconds + 60 * 60 * 24)))
+        except OverflowError:
+            log('Overflow occurred for end_time :' + end_date)
+            return ''
+        delta = relativedelta(adjusted_end_date, start_date)
+    else:
+        delta = relativedelta(end_date, start_date)
+    if delta.years > 0:
+        return f"{delta.years} year{('s' if delta.years > 1 else '')}"
+    elif delta.months > 0:
+        return f"{delta.months} month{('s' if delta.months > 1 else '')}"
+    elif delta.days > 0:
+        return f"{delta.days} day{('s' if delta.days > 1 else '')}"
+    elif delta.hours > 0:
+        return f"{delta.hours} hour{('s' if delta.hours > 1 else '')}"
+    elif delta.minutes > 0:
+        return f"{delta.minutes} minute{('s' if delta.minutes > 1 else '')}"
+    else:
+        return ''

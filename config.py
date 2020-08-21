@@ -20,4 +20,10 @@ SLEEP_TIME = 60
 
 # Guild config
 EVENT_REMINDER_TIMEOUT = 120
-EVENT_EMOJI = 'psy'
+EVENT_EMOJI = 'KiosAcademy'
+
+# Debug
+if DEBUG := os.getenv('DEBUG', '0') == '1':
+    EVENTS_CHANNEL_ID = 739549756019179601
+    SLEEP_TIME = 10
+    EVENT_EMOJI = 'psy'
