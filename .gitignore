@@ -130,4 +130,6 @@ dmypy.json
 
 # PyCharm
 .idea/*
-discord.log
+
+# Sqlite
+*.db
