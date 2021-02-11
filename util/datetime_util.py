@@ -10,7 +10,7 @@ cal = parsedatetime.Calendar()
 
 
 def parse_time(time_string, base_time, user):
-    timezone = user.timezone if user else None
+    timezone = user.time_zone if user else None
     base_time = datetime_as_timezone(base_time, timezone)
 
     try:
@@ -62,7 +62,7 @@ def parse_time(time_string, base_time, user):
 
 
 def render_time(date_time, user=None, add_link=False):
-    timezone = user.timezone if user else None
+    timezone = user.time_zone if user else None
     time_format = user.time_format if user else None
     if time_format == "12":
         format_string = "%Y-%m-%d %I:%M:%S %p %Z"

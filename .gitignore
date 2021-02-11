@@ -133,3 +133,5 @@ dmypy.json
 
 # Sqlite
 *.db
+*.db-shm
+*.db-wal

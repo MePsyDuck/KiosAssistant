@@ -10,7 +10,6 @@ RESP_OK = 'OK'
 
 # DB config
 DB_URL = os.getenv('DATABASE_URL')
-DB_PROVIDER = 'postgres'
 
 # Discord config
 TOKEN = os.getenv('TOKEN')
@@ -19,6 +18,5 @@ MSG_MAX_LENGTH = 1000
 
 # Debug
 if DEBUG := os.getenv('DEBUG', '0') == '1':
-    TASK_SLEEP_TIME = 10
-    DB_PROVIDER = ''
-    DB_URL = ''
+    TASK_SLEEP_TIME = 30
+    DB_URL = 'sqlite://database/bot.db'

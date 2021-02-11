@@ -1,34 +1,38 @@
 import discord
 from discord.ext import commands
-from discord.ext.commands import Bot
 
 from cogs.events import EventCog
 from cogs.reminders import ReminderCog
 from cogs.submissions import SubmissionCog
 from cogs.users import UserCog
 from config import TOKEN, DEBUG
+from database import init_orm
 from util.logging_util import setup_logging, logger
 
-bot = Bot(command_prefix=commands.when_mentioned_or('!!'))
 
+class AssistantBot(commands.Bot):
+    __version__ = "2.0"
 
-@bot.event
-async def on_ready():
-    logger.info('Logged in as')
-    logger.info(bot.user.name)
-    logger.info(bot.user.id)
-    logger.info('------------')
-    await bot.change_presence(activity=discord.Activity(name='Kio\'s commands',
-                                                        type=discord.ActivityType.listening))
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.add_cog(EventCog(self))
+        self.add_cog(ReminderCog(self))
+        if not DEBUG:
+            self.add_cog(SubmissionCog(self))
+        self.add_cog(UserCog(self))
+
+        self.loop.create_task(init_orm())
+
+    async def on_ready(self):
+        logger.info('Logged in as')
+        logger.info(self.user.name)
+        logger.info(self.user.id)
+        logger.info('------------')
+        await self.change_presence(activity=discord.Activity(name='Kio\'s commands',
+                                                             type=discord.ActivityType.listening))
 
 
 if __name__ == "__main__":
     setup_logging()
-
-    bot.add_cog(EventCog(bot))
-    bot.add_cog(ReminderCog(bot))
-    if not DEBUG:
-        bot.add_cog(SubmissionCog(bot))
-    bot.add_cog(UserCog(bot))
-
-    bot.run(TOKEN)
+    AssistantBot(command_prefix=commands.when_mentioned_or('!!'), help_command=None).run(TOKEN)

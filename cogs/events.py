@@ -3,10 +3,12 @@ import re
 import discord
 from discord.ext import commands, tasks
 from discord.ext.commands import has_role
+from tortoise.query_utils import Q
 
 from cogs.base_cog import BaseCog
 from config import MSG_MAX_LENGTH, TASK_SLEEP_TIME, DEBUG
-from database.api import db_api
+from database import User, Message, Event
+from database.util import atomic
 from util.datetime_util import render_time, render_time_diff, parse_time, utc_now, timestamp_from_datetime, datetime_from_timestamp
 from util.logging_util import logger
 
@@ -14,7 +16,7 @@ from util.logging_util import logger
 class EventCog(BaseCog):
     def __init__(self, bot):
         super().__init__(bot)
-        self.event_reminder_timeout = 120
+        self.event_reminder_timeout = 600
 
         if DEBUG:
             self.event_channel_id = 739549756019179601
@@ -32,6 +34,7 @@ class EventCog(BaseCog):
 
     @commands.command(name='NewEvent')
     @has_role('Sensei')
+    @atomic
     async def new_event(self, ctx, *event_details):
         """ Format : !!NewEvent <event_name>, <event_datetime>. <event_info>"""
         event_details = ' '.join(event_details).strip()
@@ -43,7 +46,7 @@ class EventCog(BaseCog):
                 event_info = match.group('event_info').strip()
 
                 now = utc_now()
-                user = db_api.users.get_or_add(ctx.author.id)
+                user, _ = await User.get_or_create(id=ctx.author.id)
                 event_datetime = parse_time(at_datetime, now, user)
 
                 if event_datetime is None:
@@ -60,9 +63,9 @@ class EventCog(BaseCog):
                     f"on {render_time(event_datetime, user)}. Get a reminder by reacting with {event_emoji}"
                     f"\n{event_info}")
 
-                author_message = db_api.messages.add(ctx.message.id, ctx.message.channel_id, user.id)
-                event_message = db_api.messages.add(message.id, message.channel_id, self.bot.user.id)
-                new_event = db_api.events.add(author_message.id, event_message.id, event_name, event_datetime)
+                author_message = await Message.create(id=ctx.message.id, channel_id=ctx.channel.id, user=user)
+                bot_message = await Message.create(id=message.id, channel_id=message.channel.id, user_id=self.bot.user.id)
+                new_event = await Event.create(author_message=author_message, bot_message=bot_message, event_name=event_name, scheduled_dt=event_datetime)
 
                 await message.add_reaction(event_emoji)
                 await ctx.reply(
@@ -75,14 +78,18 @@ class EventCog(BaseCog):
             await ctx.reply('Invalid format.')
 
     @commands.command(name='MyEvents')
+    @atomic
     async def get_events(self, ctx, from_timestamp: int = None):
         """Format : !!MyEvents <from_timestamp?>"""
         reply_msg = ''
-        user = db_api.users.get(user_id=ctx.author.id)
-        from_dt = datetime_from_timestamp(from_timestamp)
-        events = db_api.users.get_events(user.id, from_dt)
+        user, _ = await User.get_or_create(id=ctx.author.id)
+        if from_timestamp is not None:
+            from_dt = datetime_from_timestamp(from_timestamp)
+            events = await Event.filter(Q(author_message__user=user) & Q(scheduled_dt__gte=from_dt)).order_by('scheduled_dt')
+        else:
+            events = await Event.filter(author_message__user=user).order_by('scheduled_dt')
 
-        if events:
+        if events is not None and len(events) > 0:
             reply_msg += 'Your current events:\n'
 
             for event in events:
@@ -94,51 +101,59 @@ class EventCog(BaseCog):
                 reply_msg += f'|{event.id}|{render_time(event.scheduled_dt, user)}|' \
                              f'{render_time_diff(utc_now(), event.scheduled_dt)}|{event.name}|\n'
 
-            reply_msg += 'Reply with `!!ClearEvent id` or `!!ClearEvent all` to delete events'
+            reply_msg += 'Reply with `!!CancelEvent id` or `!!CancelEvent all` to delete events'
         else:
             reply_msg += 'You don\'t have any events.'
 
         await ctx.reply(reply_msg)
 
-    @commands.command(name='ClearEvent')
+    @commands.command(name='CancelEvent')
     @has_role('Sensei')
-    async def clear_event(self, ctx, event_id: str):
-        """Format : !!ClearEvent <id>/all"""
+    @atomic
+    async def cancel_event(self, ctx, event_id: str):
+        """Format : !!CancelEvent <id>/all"""
+        user, _ = await User.get_or_create(id=ctx.author.id)
         if event_id.lower() == 'all':
-            user = db_api.users.get(ctx.author.id)
-            if len(user.events) > 0:
-                db_api.events.delete_for_user(user.id)
+            events = await Event.filter(author_message__user=user).prefetch_related('bot_message')
 
-                for event in user.events:
-                    channel = await self.get_or_fetch_channel(event.event_message.channel_id)
-                    event_message = channel.get_message(event.event_message.id)
+            if len(events) > 0:
+                await Event.filter(author_message__user=user).delete()
+                for event in events:
+                    event_channel = await self.get_or_fetch_channel(event.bot_message.channel_id)
+                    event_message = event_channel.fetch_message(event.bot_message.id)
                     await event_message.delete()
                 await ctx.reply('All events deleted successfully.')
             else:
                 await ctx.reply('You don\'t have any events.')
         elif event_id.isdecimal():
             event_id = int(event_id)
-            event = db_api.events.get(event_id)
+            event = await Event.get_or_none(id=event_id).prefetch_related('bot_message', 'bot_message__user')
             if event is not None:
-                channel = await self.get_or_fetch_channel(event.event_message.channel_id)
-                event_message = await channel.fetch_message(event.event_message.id)
-                db_api.events.delete(event.id)
-                await event_message.delete()
-                await ctx.reply(f'Event {event.name}  successfully deleted!')
+                if event.bot_message.user.id == user.id:
+                    await event.delete()
+                    event_channel = await self.get_or_fetch_channel(event.bot_message.channel_id)
+                    event_message = await event_channel.fetch_message(event.bot_message.id)
+                    await event_message.delete()
+                    await ctx.reply(f'Event {event.name}  successfully deleted!')
+                else:
+                    await ctx.reply(f'Event with ID: {event_id} was not created by you.')
             else:
                 await ctx.reply(f'Event with ID: {event_id} not found.')
         else:
             await ctx.reply(f'Invalid event id')
 
     @tasks.loop(seconds=TASK_SLEEP_TIME)
+    @atomic
     async def check_events(self):
-        events = db_api.events.get_current()
+        now = utc_now()
+        events = await Event.filter(scheduled_dt__lte=now).prefetch_related('bot_message')
+
         if events is not None and len(events) > 0:
             for event in events:
                 msg = f'Reminder: Event {event.name} starts now!'
-                channel = await self.get_or_fetch_channel(event.event_message.channel_id)
-                event_emoji = await self.get_or_fetch_emoji(channel.guild.id, self.event_emoji_id)
-                message = await channel.fetch_message(event.event_message.id)
+                event_channel = await self.get_or_fetch_channel(event.bot_message.channel_id)
+                event_emoji = await self.get_or_fetch_emoji(event_channel.guild.id, self.event_emoji_id)
+                message = await event_channel.fetch_message(event.bot_message.id)
                 for reaction in message.reactions:
                     if reaction.emoji == event_emoji:
                         members = await reaction.users().flatten()
@@ -147,9 +162,9 @@ class EventCog(BaseCog):
                                 try:
                                     await member.send(content=msg, delete_after=self.event_reminder_timeout)
                                 except discord.errors.Forbidden as e:
-                                    logger.critical(f'Could not remind user {member}, error: {e.code}')
-                await channel.send(msg)
-                db_api.events.delete(event.id)
+                                    logger.critical(f'Could not remind user of event {member}, error: {e.code}')
+                await event_channel.send(content=msg, delete_after=self.event_reminder_timeout)
+            await Event.filter(scheduled_dt__lte=now).delete()
 
     @check_events.before_loop
     async def before_tasks(self):

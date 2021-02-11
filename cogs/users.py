@@ -1,7 +1,7 @@
 from discord.ext import commands
 
 from cogs.base_cog import BaseCog
-from database.api import db_api
+from database import User
 from util.datetime_util import valid_timezone, valid_time_format
 
 
@@ -9,10 +9,10 @@ class UserCog(BaseCog):
     @commands.command(name='ViewProfile')
     async def view_profile(self, ctx):
         """Format : !!ViewProfile"""
-        user = db_api.users.get_or_add(ctx.author.id)
+        user, _ = await User.get_or_create(id=ctx.author.id)
 
         reply_msg = f'{ctx.author.name}:\n'
-        reply_msg += f'Time zone: {user.timezone or "Not set yet"}'
+        reply_msg += f'Time zone: {user.time_zone or "Not set yet"}\n'
         reply_msg += f'Time format: {user.time_format or "Not set yet"}'
 
         await ctx.reply(reply_msg)
@@ -22,7 +22,7 @@ class UserCog(BaseCog):
         """Format : !!SetTimeZone <timezone>"""
         timezone = ' '.join(timezone).strip()
         if valid_timezone(timezone):
-            db_api.users.upsert(user_id=ctx.author.id, timezone=timezone)
+            await User.update_or_create(id=ctx.author.id, time_zone=timezone)
         else:
             await ctx.reply(f'`{timezone}` is not a valid timezone.')
 
@@ -30,8 +30,7 @@ class UserCog(BaseCog):
     async def set_clock(self, ctx, time_format: str):
         """Format : !!SetTimeFormat 12/24"""
         time_format = time_format.strip()
-
         if valid_time_format(time_format):
-            db_api.users.upsert(user_id=ctx.author.id, time_format=time_format)
+            await User.update_or_create(id=ctx.author.id, time_format=time_format)
         else:
             await ctx.reply(f'`{time_format}` is not a valid time format. Use `12`/`24`')

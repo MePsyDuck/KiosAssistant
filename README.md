@@ -39,9 +39,10 @@ https://discordapp.com/oauth2/authorize?&client_id=736823106194112593&scope=bot&
 
 ## TODO
 
-* Use `asyncpg` instead of `psycopg2`
 * Use discord logger
-* Add 
+* Rewrite using [RoboDanny](https://github.com/Rapptz/RoboDanny/blob/rewrite/cogs/reminder.py)
+  * Add prompts
+  * Change lists to embeds and menus
 
 ## Changelog
 ### v2.0
