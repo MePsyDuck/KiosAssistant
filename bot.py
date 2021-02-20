@@ -5,9 +5,9 @@ from cogs.events import EventCog
 from cogs.reminders import ReminderCog
 from cogs.submissions import SubmissionCog
 from cogs.users import UserCog
-from config import TOKEN, DEBUG
+from config import DEBUG
 from database import init_orm
-from util.logging_util import setup_logging, logger
+from util.logging_util import logger
 
 
 class AssistantBot(commands.Bot):
@@ -31,8 +31,3 @@ class AssistantBot(commands.Bot):
         logger.info('------------')
         await self.change_presence(activity=discord.Activity(name='Kio\'s commands',
                                                              type=discord.ActivityType.listening))
-
-
-if __name__ == "__main__":
-    setup_logging()
-    AssistantBot(command_prefix=commands.when_mentioned_or('!!'), help_command=None).run(TOKEN)
