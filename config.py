@@ -9,7 +9,7 @@ MAIL_LABEL = '"Form Submission Notifications"'
 RESP_OK = 'OK'
 
 # DB config
-DB_URL = os.getenv('DATABASE_URL')
+DB_URL = os.getenv('DATABASE_URL', 'sqlite://database/bot.db')
 
 # Discord config
 TOKEN = os.getenv('TOKEN')
