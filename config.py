@@ -1,5 +1,9 @@
 import os
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 # Gmail config
 SMTP_SERVER = 'imap.gmail.com'
 SMTP_PORT = '993'
