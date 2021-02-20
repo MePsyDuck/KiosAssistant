@@ -1,4 +1,3 @@
-import psycopg2
 from discord import utils
 from discord.ext import commands
 from discord.ext.commands import MissingRole, CommandInvokeError, CommandNotFound
@@ -19,10 +18,7 @@ class BaseCog(commands.Cog):
         elif isinstance(error, CommandNotFound):
             await ctx.reply(str(error))
         elif isinstance(error, CommandInvokeError):
-            if isinstance(error.original, psycopg2.Error):
-                logger.warning('Postgres Error : ' + str(error.original))
-            else:
-                logger.critical('Misc CommandInvokeError : ' + str(error))
+            logger.critical('CommandInvokeError : ' + str(error))
         else:
             logger.critical('Misc Error : ' + str(error))
 
