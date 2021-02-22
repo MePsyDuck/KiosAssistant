@@ -5,12 +5,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Gmail config
-SMTP_SERVER = 'imap.gmail.com'
-SMTP_PORT = '993'
 BOT_EMAIL = os.getenv('BOT_EMAIL')
 BOT_PWD = os.getenv('BOT_PWD')
-MAIL_LABEL = '"Form Submission Notifications"'
-RESP_OK = 'OK'
 
 # DB config
 DB_URL = 'sqlite://database/bot.db'
