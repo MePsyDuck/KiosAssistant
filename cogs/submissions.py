@@ -22,7 +22,7 @@ class SubmissionCog(BaseCog):
         try:
             mail = imaplib.IMAP4_SSL('imap.gmail.com', 993)
             mail.login(BOT_EMAIL, BOT_PWD)
-            mail.select("Form Submission Notifications")
+            mail.select('"Form Submission Notifications"')
 
             resp, mails = mail.search(None, '(UNSEEN)')
             if resp == 'OK':
